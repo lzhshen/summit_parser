@@ -16,6 +16,7 @@ import argparse
 import glob
 import os
 from base64 import b64encode
+import requests
 
 FOCUS_TAG_DICT = {"A": "Apache Committer Insights",
                   "B": "Business Adoption",
@@ -72,6 +73,7 @@ class TechTalkItem:
             dict["speaker" + i.str() + "_bio"] = self._speakers[i]["bio"]
         return dict
 
+class SparkSummitHtmlParser:
 
 class HadoopSummitHtmlParser:
     def parse(self, htmlDoc):
@@ -149,12 +151,12 @@ class HadoopSummitHtmlParser:
 
         return item_list
 
-class Sniffer:
+class SlideSniffer:
+
+class VideoSniffer:
     _driver = None
     _PROXY = {'host': '127.0.0.1', 'port': '8780', 'usr': 'pico', 'pwd': 'pico2009server'}
     def __init__(self):
-        #options = webdriver.Firefox.Options()
-        #options.setProfile("/home/shen/.mozilla/firefox/yioplo2g.testfirefoxplugin");
         fp = webdriver.FirefoxProfile()
         firebug_ext = '/home/shen/.mozilla/firefox/5e9ceske.default/extensions/firebug@software.joehewitt.com.xpi'
         closeproxy_ext = '/home/shen/.mozilla/firefox/yioplo2g.testfirefoxplugin/extensions/closeproxyauth.vaka@gmail.com.xpi'
@@ -174,16 +176,8 @@ class Sniffer:
         credentials = '{usr}:{pwd}'.format(**self._PROXY)
         credentials = b64encode(credentials.encode('ascii')).decode('utf-8')
         fp.set_preference('extensions.closeproxyauth.authtoken', credentials)
-
-#        fp.set_preference("modifyheaders.headers.count", 1)
-#        fp.set_preference("modifyheaders.headers.action0", "Add")
-#        fp.set_preference("modifyheaders.headers.name0", "Name_of_header") # Set here the name of the header
-#        fp.set_preference("modifyheaders.headers.value0", "value_of_header") # Set here the value of the header
-#        fp.set_preference("modifyheaders.headers.enabled0", True)
-#        fp.set_preference("modifyheaders.config.active", True)
-#        fp.set_preference("modifyheaders.config.alwaysOn", True)
         self._driver = webdriver.Firefox(firefox_profile=fp)
-    def sniffVideoDlLink(self, list, exclude_set):
+    def sniff(self, list, exclude_set):
         try:
             self._driver.get("http://en.savefrom.net")
             i = 0
@@ -219,68 +213,6 @@ class Sniffer:
             self._driver.quit()
             return list 
 
-    def sniffSlideDlLink(self, list):
-        try:
-            # login
-            usr = "lzhshen@hotmail.com"
-            pwd = "q1w2E#R$"
-            self._driver.get("https://www.slideshare.net/login")
-            
-            print "wait for user input ..."
-            usrInput = WebDriverWait(self._driver, 30).until(EC.presence_of_element_located((By.ID, "user_login")))
-            print "wait for password input ..."
-            pwdInput = WebDriverWait(self._driver, 30).until(EC.presence_of_element_located((By.ID, "user_password")))
-            print "send user name and password ..."
-            usrInput.send_keys(usr)
-            pwdInput.send_keys(pwd)
-            print "click login ..."
-            loginBtn = WebDriverWait(self._driver, 30).until(EC.presence_of_element_located((By.ID, "login_from_loginpage")))
-            loginBtn.click()
-            print "wait ..."
-            time.sleep(10)
-            i = 0
-            for dict in list:
-                if dict["slide_link"] and not dict["slide_dl_link"]:
-                    try:
-                        # jump to target slide's page
-                        self._driver.get(dict["slide_link"])
-
-                        # submit video url
-                        print "wait for download button ..."
-                        actionLn = WebDriverWait(self._driver, 30).until(EC.presence_of_element_located((By.ID, "slideshow-actions")))
-                        print "locate download button ..."
-                        #dlBtn = actionLn.find_element_by_xpath("//a[@class='tiny art-deco download button']")
-                        dlBtn = actionLn.find_element_by_xpath("//*[contains(@class, 'tiny art-deco download button')]")
-                        if dlBtn:
-                            print "click download button..."
-                            dlBtn.click()
-                        print "wait for popupDiv ..."
-                        popupDiv = WebDriverWait(self._driver, 30).until(EC.presence_of_element_located((By.ID, "download-interstitial-modal")))
-                        print "locate nothanksBtn ..."
-                        #nothanksBtn = actionLn.find_element_by_xpath("//button[@class='tiny art-deco download button']")
-                        nothanksBtn = popupDiv.find_element_by_xpath("//*[contains(@class, 'tiny art-deco download button')]")
-                        print "click no thanks link ..."
-                        #rc = self._driver.execute_script("arguments[0].click();", nothanksBtn);
-                        #response = self._driver.request('POST', 'http://www.slideshare.net/savedfiles?s_title=im-being-followed-by-drones&user_login=HadoopSummit')
-                        #print response
-                        #print "sleep 60s ..."
-                        #dict["slide_dl_link"] = nothanksBtn.get_attribute("href")
-                        abc = nothanksBtn.click()
-                        #print abc
-                        time.sleep(60)
-
-                        i = i+1
-                        if i > 0:
-                            break
-                    except :
-                        print dict["title"]
-                    finally:
-                        pass
-        except Exception, e:
-            print str(e)
-        finally:
-            self._driver.quit()
-            return list 
 
 class HadoopSummit:
     _src = 'FILE' # support 'FILE' and 'URL'
@@ -370,10 +302,10 @@ class HadoopSummit:
             self._item_list = sorted(list, key=lambda k: k['title'])
 
     def sniffVideoDlLink(self, sniffer, exclude_dict):
-        self._item_list = sniffer.sniffVideoDlLink(self._item_list, exclude_dict)
+        self._item_list = sniffer.sniff(self._item_list, exclude_dict)
 
     def sniffSlideDlLink(self, sniffer):
-        self._item_list = sniffer.sniffSlideDlLink(self._item_list)
+        self._item_list = sniffer.sniff(self._item_list)
 
 def getVideoFileSet(dir):
     video_files = glob.glob(dir + "/*" + VIDEO_FILE_SUFFIX)
@@ -384,7 +316,7 @@ def getVideoFileSet(dir):
 if __name__ == "__main__":    
 
     arg_parser = argparse.ArgumentParser(description='Hadoop Summit Parser')
-    arg_parser.add_argument('-f', '--func', dest='func', required=True, help='function options: parse, sniff_vlink, sniff_slink, dump_as_csv, dump_vlink, dump_title')
+    arg_parser.add_argument('-f', '--func', dest='func', required=True, help='function options: parse, sniff_vlink, sniff_slink, dump_as_csv, dump_vlink, dump_slink, dump_title')
     arg_parser.add_argument('-i', '--input ', dest='input', required=True, help='input file or uri')
     arg_parser.add_argument('-o', '--output', dest='output', required=True, help='output file')
 
@@ -394,6 +326,7 @@ if __name__ == "__main__":
        not (args.func == 'sniff_slink') and \
        not (args.func == 'dump_as_csv') and \
        not (args.func == 'dump_vlink') and \
+       not (args.func == 'dump_slink') and \
        not (args.func == 'dump_title'):
         arg_parser.print_help()
 
@@ -410,18 +343,18 @@ if __name__ == "__main__":
     elif args.func == 'sniff_vlink':
         # get files that have been downloaded
         exclude_set = getVideoFileSet("/mnt/hgfs/HadoopSummit2016_sanjoe")
-        sniffer = Sniffer()
+        sniffer = VideoSniffer()
         summit = HadoopSummit() 
         summit.loadFromJson(args.input)
         summit.sniffVideoDlLink(sniffer, exclude_set)
         summit.dumpToJson(args.output)
 
     elif args.func == 'sniff_slink':
-        sniffer = Sniffer()
+        sniffer = SlideSniffer()
         summit = HadoopSummit() 
         summit.loadFromJson(args.input)
         summit.sniffSlideDlLink(sniffer)
-        summit.dumpSlideDlLink(args.output)
+        summit.dumpToJson(args.output)
 
     elif args.func == 'dump_as_csv':
         summit = HadoopSummit()
@@ -433,6 +366,11 @@ if __name__ == "__main__":
         summit.loadFromJson(args.input)
         summit.dumpVideoDlLink(args.output)
 
+    elif args.func == 'dump_slink':
+        summit = HadoopSummit()
+        summit.loadFromJson(args.input)
+        summit.dumpSlideDlLink(args.output)
+
     elif args.func == 'dump_title':
         summit = HadoopSummit()
         summit.loadFromJson(args.input)
@@ -440,7 +378,3 @@ if __name__ == "__main__":
 
     else:
         arg_parser.print_help()
-       
-
-
-
