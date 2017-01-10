@@ -73,7 +73,7 @@ class TechTalkItem:
             dict["speaker" + i.str() + "_bio"] = self._speakers[i]["bio"]
         return dict
 
-class SparkSummitHtmlParser:
+#class SparkSummitHtmlParser:
 
 class HadoopSummitHtmlParser:
     def parse(self, htmlDoc):
@@ -152,6 +152,50 @@ class HadoopSummitHtmlParser:
         return item_list
 
 class SlideSniffer:
+    _URL_TEMPLATE = """http://www.slideshare.net/savedfiles?s_title=%s&user_login=HadoopSummit"""
+    _MAX_RETRY_NUM = 3
+    _proxies = { 'http': 'http://pico:pico2009server@127.0.0.1:8780', 
+                 'https': 'http://pico:pico2009server@127.0.0.1:8780' }
+    _headers = {
+        'Cookie': 'bcookie="v=2&3b4b4888-5101-4f60-84ab-8e40eb6a545e"; tos_update_banner_shows=3; fbm_2490221586=base_domain=.www.slideshare.net; logged_in=381442; _uv_id=1191546341; ssdc=381442; _bizo_bzid=6b68dd39-d948-423d-aa2c-ea79d04f4e8a; _bizo_cksm=C0220F664422DAED; _cookie_id=8b7082a0272552e496fa874c788f5350; sso_redirect=true; language=en; _bizo_np_stats=; flash=---%2B%250Asig%253A%2B919b099f8ff715615d807514e5833390874d1374%250Adata%253A%2B%257C%250A%2B%2B---%2B%250A%2B%2Bused%253A%2B%2521ruby%252Fobject%253ASet%2B%250A%2B%2B%2B%2Bhash%253A%2B%257B%257D%250A%2B%2B%250A%2B%2Bvals%253A%2B%250A%2B%2B%2B%2B%253Apermanent%253A%2B%250A%2B%2B%2B%2B%253Awarning%253A%2B%250A%2B%2B%2B%2B%253Amodal_notice%253A%2B%250A%2B%2B%2B%2B%253Amessage%253A%2B%250A%2B%2B%2B%2B%253Adwnldloop%253A%2B%250A%2B%2B%2B%2B%253Anotice%253A%2B%250A%2B%2B%2B%2B%253Aunverdwnld%253A%2B%250A%2B%2B%2B%2B%253Aerror%253A%2B%250A%2B%2B%2B%2B%253Asuccess%253A%2B%250A%250A; SERVERID=r87|WHLoa|WHLeJ; linkedin_oauth_y4wa9oe4c6nu_crc=null; RT=nu=http%3A%2F%2Fwww.slideshare.net%2FHadoopSummit%2Fim-being-followed-by-drones&cl=1483949884134; __utmd=1; __utma=186399478.62612271.1474419275.1483923284.1483925619.47; __utmb=186399478.1.9.1483949886693; __utmc=186399478; __utmz=186399478.1482836804.37.16.utmcsr=dzone.com|utmccn=(referral)|utmcmd=referral|utmcct=/; __utmv=186399478.|1=member_type=FREE=1',
+        'Origin': 'http://www.slideshare.net',
+        'Accept-Encoding': 'gzip, deflate',
+        'X-CSRF-Token': 'M25b9ujaocY8r1jhUz9MGG8aZLvxIXOfv6/tdBDkpQA=',
+        'Accept-Language': 'zh-CN,zh;q=0.8,en-US;q=0.6,en;q=0.4,fr;q=0.2,de;q=0.2',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.75 Safari/537.36',
+        'Proxy-Authorization': 'Basic cGljbzpwaWNvMjAwOXNlcnZlcg==',
+        'Accept': '*/*',
+        'Referer': '',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Proxy-Connection': 'keep-alive',
+        'Content-Length': '0' }
+
+    def sniff(self, list):
+
+        i = 0
+        for dict in list:
+            url = self._URL_TEMPLATE % (dict['slide_link'].split('/')[-1])
+            self._headers['Referer'] = dict['slide_link']
+            # retry several times to fetch slide download link
+            for j in range(self._MAX_RETRY_NUM):
+                try:
+                    response = requests.post(url, timeout=5, headers=self._headers,
+                            proxies=self._proxies)
+                    break
+                except:
+                    print "%d timeout for:  %s" % (j, dict['slide_link'])
+            rep = json.loads(response.content)
+            if rep['success'] == True:
+                dict['slide_dl_link'] = rep['download_ss_url'].encode('ascii')
+                print "%d success" % (i)
+            else:
+                print "Failed to fetch download link for slide:%s" % \
+                    (dict['slide_link'])
+                print response
+            i += 1
+            if i > 500:
+                break
+        return list
 
 class VideoSniffer:
     _driver = None
