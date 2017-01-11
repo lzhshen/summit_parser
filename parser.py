@@ -197,6 +197,39 @@ class SlideSniffer:
                 break
         return list
 
+
+class pdfSlideDownloaderUtils():
+    def __init__(self, url):
+        self._url = url
+
+    def fetchImageUrl(self):
+        _site = urllib.urlopen(self._url)
+        _arvore = _parse.fromstring(_site.read())
+        _site.close()
+        _slides = _arvore.xpath('//img[@class="slide_image"]')
+        slide_cntr=1
+        imgurl_list = []
+        for _slide in _slides:
+            print "slide: %d" % (slide_cntr)
+            _s = _slide.get("data-full")
+            imgurl = "%ss_%0.9d.jpg" % (_s, slide_cntr)
+            imurl_list.append(imgurl)
+            slide_cntr+=1
+        return imgurl_list
+
+    def convertImg2Pdf(self, srcDir, dstDir, imgNamePrefix):
+        img_files = glob.glob(srcDir + "/" + imgNamePrefix + "*")
+        # rename images by padding zero to it sequence number, e.g. rename "im-being-followed-by-drones-1-1024.jpg" 
+        # to "im-being-followed-by-drones-001-1024.jpg"
+        i = 1
+        for oldname in img_files:
+            newname = "%s/imgNamePrefix-%03d-1024.jpg" % (srcDir, i) 
+            os.rename(oldname, newname)
+            i += 1
+        pdfFileName = "%s/%s.pdf" % (dstDir, imgNamePrefix)
+        os.system("convert %s/%s*.jpg %s" % (srcDir, imgNamePrefix, pdfFileName))
+
+
 class VideoSniffer:
     _driver = None
     _PROXY = {'host': '127.0.0.1', 'port': '8780', 'usr': 'pico', 'pwd': 'pico2009server'}
@@ -345,11 +378,16 @@ class HadoopSummit:
             list = json.loads(infile.read())
             self._item_list = sorted(list, key=lambda k: k['title'])
 
+    def download_slide(self, output_dir):
+
     def sniffVideoDlLink(self, sniffer, exclude_dict):
         self._item_list = sniffer.sniff(self._item_list, exclude_dict)
 
     def sniffSlideDlLink(self, sniffer):
         self._item_list = sniffer.sniff(self._item_list)
+
+    def genSlideImgUrl(self, infile,):
+
 
 def getVideoFileSet(dir):
     video_files = glob.glob(dir + "/*" + VIDEO_FILE_SUFFIX)
@@ -419,6 +457,10 @@ if __name__ == "__main__":
         summit = HadoopSummit()
         summit.loadFromJson(args.input)
         summit.dumpTitle(args.output)
+
+    elif args.func == 'download_slide':
+        summit = HadoopSummit()
+        summit.loadFromJson(args.input)
 
     else:
         arg_parser.print_help()
