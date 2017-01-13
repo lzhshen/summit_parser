@@ -21,16 +21,13 @@ class SparkSummitParser:
             slide = {'src_url': '', 'dl_link': '', 'fname': ''}
 
             parent = item.parent
-            #title
-            title = parent.h2.a.get_text().encode('utf-8')
+            # title
+            title = parent.h2.a.get_text().strip().encode('utf-8')
             detail_link = parent.h2.a.get('href')
             desc_doc = urllib.urlopen(detail_link).read()
             desc_soup = BeautifulSoup(desc_doc, 'html.parser')
-
-            # test
-            print i
-
-
+            # description
+            print "%d: fetching techtalk's description for %s" % (i, title)
             desc_p_list = desc_soup.find('div', 'event-description').find_all('p')
             if len(desc_p_list) == 2:
                 desc = desc_p_list[1].get_text()
@@ -41,14 +38,15 @@ class SparkSummitParser:
                 speaker_link = li.a.get('href')
                 corp = li.span.get_text().strip().encode('utf-8')
                 speaker['corp'] = re.sub(r'[()]',r'', corp)
-
+                
+                print "fetching speaker's bio for %s" % (speaker['name'])
                 speaker_doc = urllib.urlopen(speaker_link).read()
                 speaker_soup = BeautifulSoup(speaker_doc, 'html.parser')
                 speaker['bio'] = speaker_soup.find('div', 'speaker-bio').find('p').get_text()
                 speakers.append(speaker)
             # video and slide link
             meta = parent.find_all('div', 'summit-schedule--event--metadata')[-1].find_all('a')
-            if len(meta) >= 1: 
+            if len(meta) >= 1:
                 video['src_url'] = meta[0].get('href')
             if len(meta) >= 2:
                 slide['src_url'] = meta[1].get('href')
@@ -56,7 +54,6 @@ class SparkSummitParser:
             tag_div = parent.find('div', 'summit-schedule--event--focus')
             if tag_div:
                 tag = tag_div.get_text()
-                print tag
 
             # append to techtalk list 
             tt = TechTalk(title=title, speakers=speakers, desc=desc, \
@@ -65,7 +62,7 @@ class SparkSummitParser:
 
             # test
             i += 1
-            if i > 1:
+            if i > 5:
                 break
 
         return tt_list
