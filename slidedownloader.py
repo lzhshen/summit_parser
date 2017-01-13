@@ -30,7 +30,7 @@ class PdfSlideDownloaderUtils():
     def getImageFilePrefix(self, imgurl):
        return imgurl.split('-1-1024.jpg') [0].split('/')[-1]
 
-    def convertImg2Pdf(self, indir, outdir, img_prefix):
+    def convertImg2Pdf(self, indir, outdir, img_prefix, filename):
         img_files = glob.glob(indir + "/" + img_prefix + "*")
         # rename images by padding zero to it sequence number, e.g. rename "im-being-followed-by-drones-1-1024.jpg" 
         # to "im-being-followed-by-drones-001-1024.jpg"
@@ -39,7 +39,8 @@ class PdfSlideDownloaderUtils():
             newname = "%s/%s-%0.4d.jpg" % (indir, img_prefix, int(idx)) 
             print "%s ==> %s" % (oldname, newname)
             os.rename(oldname, newname)
-        filename = "%s/%s.pdf" % (outdir, img_prefix)
+        #filename = "%s/%s.pdf" % (outdir, img_prefix)
+        filename = "%s/%s" % (outdir, filename)
         os.system("convert %s/%s-*.jpg %s" % (indir, img_prefix, filename))
 
 def loadFromJson(file):
@@ -57,14 +58,18 @@ def genImgUrl(jsonfile, urlfile):
     slist = loadFromJson(jsonfile)
     util = PdfSlideDownloaderUtils()
     for item in slist:
-        print "start fetching image links for %s" % (item['slide_link'])
-        imgurls = util.fetchImageUrl(item['slide_link'])
-        print "fetch completed! Totaly %d images" % (len(imgurls))
-        with open(urlfile, 'a+') as outfile:
-            for url in imgurls:
-                outfile.write(url + "\n") 
-        # get Image prefix
-        prefix = util.getImageFilePrefix(imgurls[0])
+        prefix = ''
+        if item['slide_link']:
+            print "start fetching image links for %s" % (item['slide_link'])
+            imgurls = util.fetchImageUrl(item['slide_link'])
+            print "fetch completed! Totaly %d images" % (len(imgurls))
+            with open(urlfile, 'a+') as outfile:
+                for url in imgurls:
+                    outfile.write(url + "\n") 
+            # get Image prefix
+            prefix = util.getImageFilePrefix(imgurls[0])
+        else:
+            print "no slide link for %s" % (item['title'])
         item['slide_image_prefix'] = prefix
     # dump to json which include "slide_image_prefix"
     new_jsonfile = "%s%s.json" % (jsonfile.split(".json")[0], "_with_image_prefix")
@@ -74,7 +79,10 @@ def genPdf(jsonfile, indir, outdir):
     slist = loadFromJson(jsonfile)
     util = PdfSlideDownloaderUtils()
     for item in slist:
-        util.convertImg2Pdf(indir, outdir, item['slide_image_prefix'])
+        if item['slide_image_prefix']:
+            pdf_file_name = "%s%s" % (item['video_file_name'].split('.mp4')[0], ".pdf")
+            print "generate pdf for %s ..." % (item['title'])
+            util.convertImg2Pdf(indir, outdir, item['slide_image_prefix'], pdf_file_name)
 
 if __name__ == "__main__":
 

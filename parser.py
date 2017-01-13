@@ -240,7 +240,7 @@ class VideoSniffer:
         fp.add_extension(firebug_ext)
         fp.add_extension(closeproxy_ext)
 
-        fp.set_preference('network.proxy.type', 1)
+        fp.set_preference('network.proxy.type', 2)
         fp.set_preference('network.proxy.http', self._PROXY['host'])
         fp.set_preference('network.proxy.http_port', int(self._PROXY['port']))
         fp.set_preference('network.proxy.ssl', self._PROXY['host'])
