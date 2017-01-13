@@ -23,7 +23,8 @@ VIDEO_FILE_SUFFIX = '.mp4'
 
 class TechTalk:
 
-    def __init__(self, title='', desc='', tag='', video=None, slide=None, speakers=None):
+    def __init__(self, title='', desc='', tag='', video=None, slide=None, speakers=None, ttt='hadoop'):
+        self._type = ttt 
         self._data = {
             'title': '',
             'desc': '',
@@ -34,6 +35,7 @@ class TechTalk:
         }
         self._data['title'] = title
         self._data['desc'] = desc
+        self._data['tag'] = tag
         if video: self._data['video'] = video
         if slide: self._data['slide'] = slide
         if speakers: self._data['speakers'] = speakers
@@ -49,8 +51,9 @@ class TechTalk:
         return str(pp.pprint(self._data))
 
     def extendTag(self):
-        if self._data["tag"] in FOCUS_TAG_DICT.keys():
-            self._data["tag"] = FOCUS_TAG_DICT[self._data["tag"]]
+        if self._type == 'hadoop':
+            if self._data["tag"] in FOCUS_TAG_DICT.keys():
+                self._data["tag"] = FOCUS_TAG_DICT[self._data["tag"]]
     
     def stripTitle(self):
         title = self._data['title']
@@ -62,7 +65,7 @@ class TechTalk:
         title = self._data['title']
         title = re.sub(r'[^A-Z^a-z^0-9^]',r' ', title)
         title = re.sub(' +','_', title.strip())
-        self._data['video_file_name'] = title + VIDEO_FILE_SUFFIX
+        self._data['video']['fname'] = title + VIDEO_FILE_SUFFIX
 
     def getVideoDlLink(self):
         return self._data['video']['dl_link']
@@ -131,7 +134,6 @@ class SummitDocUtil:
                     dict["speaker" + str(i) + "_bio"] = speaker["bio"]
                     i += 1
                 writer.writerow({k.encode('utf-8'):v.encode('utf-8') for k,v in dict.items()})
-
 
     def dumpVideoDlLink(self, file):
         with open(file, 'w') as outfile:

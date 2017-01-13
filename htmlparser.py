@@ -4,13 +4,14 @@ from bs4 import BeautifulSoup
 import re
 import argparse
 from summit import SummitDocUtil, TechTalk
+import urllib
 
 class SparkSummitParser:
 
     def parse(self, htmlDoc):
         soup = BeautifulSoup(htmlDoc, 'html.parser')
         tt_list = []
-
+        i = 1
         for item in soup.find_all('ul', 'summit-schedule--event--speakers list-unstyled'):
             title = ''
             desc = ''
@@ -23,13 +24,27 @@ class SparkSummitParser:
             #title
             title = parent.h2.a.get_text().encode('utf-8')
             detail_link = parent.h2.a.get('href')
+            desc_doc = urllib.urlopen(detail_link).read()
+            desc_soup = BeautifulSoup(desc_doc, 'html.parser')
+
+            # test
+            print i
+
+
+            desc_p_list = desc_soup.find('div', 'event-description').find_all('p')
+            if len(desc_p_list) == 2:
+                desc = desc_p_list[1].get_text()
             # speakers
             for li in parent.ul.find_all("li"):
                 speaker = {}
                 speaker['name'] = li.a.get_text().strip().encode('utf-8')
-                speaker['detail_link'] = li.a.get('href')
+                speaker_link = li.a.get('href')
                 corp = li.span.get_text().strip().encode('utf-8')
                 speaker['corp'] = re.sub(r'[()]',r'', corp)
+
+                speaker_doc = urllib.urlopen(speaker_link).read()
+                speaker_soup = BeautifulSoup(speaker_doc, 'html.parser')
+                speaker['bio'] = speaker_soup.find('div', 'speaker-bio').find('p').get_text()
                 speakers.append(speaker)
             # video and slide link
             meta = parent.find_all('div', 'summit-schedule--event--metadata')[-1].find_all('a')
@@ -37,11 +52,21 @@ class SparkSummitParser:
                 video['src_url'] = meta[0].get('href')
             if len(meta) >= 2:
                 slide['src_url'] = meta[1].get('href')
+            # tag
+            tag_div = parent.find('div', 'summit-schedule--event--focus')
+            if tag_div:
+                tag = tag_div.get_text()
+                print tag
 
             # append to techtalk list 
             tt = TechTalk(title=title, speakers=speakers, desc=desc, \
-                          tag=tag, video=video, slide=slide)
+                          tag=tag, video=video, slide=slide, ttt='spark')
             tt_list.append(tt)
+
+            # test
+            i += 1
+            if i > 1:
+                break
 
         return tt_list
             
