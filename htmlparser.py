@@ -4,7 +4,6 @@ from bs4 import BeautifulSoup
 import re
 import argparse
 from summit import SummitDocUtil, TechTalk
-import copy
 
 class SparkSummitParser:
 
@@ -42,7 +41,7 @@ class SparkSummitParser:
             # append to techtalk list 
             tt = TechTalk(title=title, speakers=speakers, desc=desc, \
                           tag=tag, video=video, slide=slide)
-            tt_list.append(copy.deepcopy(tt))
+            tt_list.append(tt)
 
         return tt_list
             

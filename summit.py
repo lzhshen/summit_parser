@@ -6,7 +6,6 @@ import csv
 import os
 import pprint
 from json import JSONEncoder
-import copy
 
 FOCUS_TAG_DICT = {"A": "Apache Committer Insights",
                   "B": "Business Adoption",
@@ -22,7 +21,7 @@ FOCUS_TAG_DICT = {"A": "Apache Committer Insights",
 
 VIDEO_FILE_SUFFIX = '.mp4'
 
-class TechTalk(object):
+class TechTalk:
 
     def __init__(self, title='', desc='', tag='', video=None, slide=None, speakers=None):
         self._data = {
@@ -48,14 +47,6 @@ class TechTalk(object):
     def __str__(self):
         pp = pprint.PrettyPrinter(indent=4)
         return str(pp.pprint(self._data))
-
-    def __deepcopy__(self, memo):
-        cls = self.__class__
-        result = cls.__new__(cls)
-        memo[id(self)] = result
-        for k, v in self.__dict__.items():
-            setattr(result, k, copy.deepcopy(v, memo))
-        return result
 
     def extendTag(self):
         if self._data["tag"] in FOCUS_TAG_DICT.keys():
