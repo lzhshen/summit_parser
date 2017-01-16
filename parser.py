@@ -17,6 +17,7 @@ import glob
 import os
 from base64 import b64encode
 import requests
+from lxml import html as _parse
 
 FOCUS_TAG_DICT = {"A": "Apache Committer Insights",
                   "B": "Business Adoption",

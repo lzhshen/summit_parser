@@ -4,9 +4,12 @@ from bs4 import BeautifulSoup
 import re
 import argparse
 from summit import SummitDocUtil, TechTalk
-import urllib
+import os
+import requests
 
 class SparkSummitParser:
+    _proxies = { 'http': 'http://pico:pico2009server@127.0.0.1:8780', 
+                 'https': 'http://pico:pico2009server@127.0.0.1:8780' }
 
     def parse(self, htmlDoc):
         soup = BeautifulSoup(htmlDoc, 'html.parser')
@@ -17,17 +20,18 @@ class SparkSummitParser:
             desc = ''
             tag = ''
             speakers = []
-            video = {'src_url': '', 'dl_link': '', 'fname': ''}
-            slide = {'src_url': '', 'dl_link': '', 'fname': ''}
+            video = {'src_url': '', 'dl_link': ''}
+            slide = {'src_url': '', 'dl_link': ''}
 
             parent = item.parent
             # title
             title = parent.h2.a.get_text().strip().encode('utf-8')
-            detail_link = parent.h2.a.get('href')
-            desc_doc = urllib.urlopen(detail_link).read()
-            desc_soup = BeautifulSoup(desc_doc, 'html.parser')
             # description
-            print "%d: fetching techtalk's description for %s" % (i, title)
+            detail_link = parent.h2.a.get('href')
+            print "%d: fetching techtalk's description for %s" % (i, detail_link)
+            response = requests.get(detail_link, timeout=30, proxies=self._proxies)
+            desc_doc = response.content
+            desc_soup = BeautifulSoup(desc_doc, 'html.parser')
             desc_p_list = desc_soup.find('div', 'event-description').find_all('p')
             if len(desc_p_list) == 2:
                 desc = desc_p_list[1].get_text()
@@ -40,7 +44,8 @@ class SparkSummitParser:
                 speaker['corp'] = re.sub(r'[()]',r'', corp)
                 
                 print "fetching speaker's bio for %s" % (speaker['name'])
-                speaker_doc = urllib.urlopen(speaker_link).read()
+                response = requests.get(speaker_link, timeout=30, proxies=self._proxies)
+                speaker_doc = response.content
                 speaker_soup = BeautifulSoup(speaker_doc, 'html.parser')
                 speaker['bio'] = speaker_soup.find('div', 'speaker-bio').find('p').get_text()
                 speakers.append(speaker)
@@ -73,17 +78,18 @@ class HadoopSummitParser:
     def parse(self, htmlDoc):
         soup = BeautifulSoup(htmlDoc, 'html.parser')
 
-        item_list = []
+        tt_list = []
         gridViewDiv = soup.find(id="GridView")
         detailDivParent = None
         detailDiv = None
         if gridViewDiv:
             for item in gridViewDiv.find_all("div", re.compile("^lvtitleg*")):
                 title = ''
-                video_link = ''
-                slide_link = ''
-                focus_tag = ''
                 desc = ''
+                tag = ''
+                speakers = []
+                video = {'src_url': '', 'dl_link': ''}
+                slide = {'src_url': '', 'dl_link': ''}
                 
                 # get title
                 it = item
@@ -93,15 +99,15 @@ class HadoopSummitParser:
 
                 # get video link 
                 it = item.parent.find("span", "videolink")
-                if it and it.a: video_link = it.a.get('href').encode('utf-8')
+                if it and it.a: video['src_url'] = it.a.get('href').encode('utf-8')
 
                 # get slides link 
                 it = item.parent.find("span", "slideslink")
-                if it and it.a: slide_link = it.a.get('href').encode('utf-8')
+                if it and it.a: slide['src_url'] = it.a.get('href').encode('utf-8')
 
                 # get focus tag
                 it = item.parent.find("div", re.compile("^keyin*"))
-                if it: focus_tag = it.get_text().encode('utf-8')
+                if it: tag = it.get_text().encode('utf-8')
 
                 # get target div which includes: desc, speakers' biography
                 descId = "%s%s" % ("desc_", item.get('id').split('_')[1])
@@ -134,18 +140,12 @@ class HadoopSummitParser:
                     speakerList[0]["bio"] = speakers_bio
 
                 if title:
-                    tech_talk = {}
-                    tech_talk["title"] = title
-                    tech_talk["desc"] = desc
-                    tech_talk["speakers"] = speakerList
-                    tech_talk["video_link"] = video_link
-                    tech_talk["video_dl_link"] = '' 
-                    tech_talk["slide_link"] = slide_link 
-                    tech_talk["slide_dl_link"] = '' 
-                    tech_talk["focus_tag"] = focus_tag
-                    item_list.append(tech_talk)
+                    # append to techtalk list 
+                    tt = TechTalk(title=title, speakers=speakerList, desc=desc, \
+                                  tag=tag, video=video, slide=slide, ttt='hadoop')
+                    tt_list.append(tt)
 
-        return item_list
+        return tt_list
 
 
 if __name__ == "__main__":
